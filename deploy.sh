@@ -59,7 +59,7 @@ while true; do
     --overscroll-history-navigation=0 \
     --noerrdialogs \
     --incognito \
-    "file:///usr/local/share/kiosk/index.html"
+    --app="file:///usr/local/share/kiosk/index.html"
   sleep 0.5
 done
 EOF
