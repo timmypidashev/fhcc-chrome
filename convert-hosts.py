@@ -22,7 +22,8 @@ HOSTS_URLS = [
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "school_policy.json")
 
 ALLOWLIST = [
-    "file:///*",
+    "file://*",
+    "file:///usr/local/share/kiosk/*",
     "kiddle.co",
     "*.kiddle.co",
     "kiddle.com",
