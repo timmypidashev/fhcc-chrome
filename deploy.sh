@@ -31,20 +31,14 @@ echo ">> Launcher → $LAUNCH_SCRIPT"
 cat >"$LAUNCH_SCRIPT" <<'EOF'
 #!/usr/bin/env bash
 # Respawn chromium if it exits (defeats Ctrl+W, accidental close, crash).
-# Exit cleanly with SIGTERM/SIGINT (e.g. when admin kills the wrapper).
-trap 'kill %1 2>/dev/null; exit 0' INT TERM
+# Start matchbox-window-manager first so chromium --kiosk goes fullscreen.
+trap 'kill 0' INT TERM EXIT
 
-# Detect screen size — no WM is running to honor --kiosk fullscreen, so
-# we size the window manually. Default if xrandr fails.
-RES=$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')
-W=${RES%x*}; H=${RES#*x}
-W=${W:-1920}; H=${H:-1080}
+/usr/bin/matchbox-window-manager -use_titlebar no &
 
 while true; do
   /usr/bin/chromium \
     --kiosk \
-    --window-position=0,0 \
-    --window-size="$W,$H" \
     --no-first-run \
     --no-default-browser-check \
     --disable-extensions \
@@ -65,8 +59,7 @@ while true; do
     --overscroll-history-navigation=0 \
     --noerrdialogs \
     --incognito \
-    "file:///usr/local/share/kiosk/index.html" &
-  wait %1
+    "file:///usr/local/share/kiosk/index.html"
   sleep 0.5
 done
 EOF

@@ -25,6 +25,9 @@ if [[ ! -x /usr/local/bin/school-kiosk ]]; then
   exit 3
 fi
 
+echo ">> Installing required packages"
+pacman -S --needed --noconfirm chromium matchbox-window-manager
+
 echo ">> X session → $SESSION_FILE"
 cat >"$SESSION_FILE" <<EOF
 [Desktop Entry]
