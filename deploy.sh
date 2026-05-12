@@ -30,28 +30,35 @@ install -m 0644 "$WEB_SRC"/*.js   "$WEB_DIR/" 2>/dev/null || true
 echo ">> Launcher → $LAUNCH_SCRIPT"
 cat >"$LAUNCH_SCRIPT" <<'EOF'
 #!/usr/bin/env bash
-exec /usr/bin/chromium \
-  --kiosk \
-  --no-first-run \
-  --no-default-browser-check \
-  --disable-extensions \
-  --disable-plugins \
-  --disable-sync \
-  --disable-default-apps \
-  --disable-translate \
-  --disable-background-networking \
-  --disable-component-extensions-with-background-pages \
-  --disable-device-discovery-notifications \
-  --disable-hang-monitor \
-  --disable-popup-blocking \
-  --disable-prompt-on-repost \
-  --disable-component-update \
-  --disable-features=TranslateUI \
-  --check-for-update-interval=31536000 \
-  --overscroll-history-navigation=0 \
-  --noerrdialogs \
-  --incognito \
-  "file:///usr/local/share/kiosk/index.html"
+# Respawn chromium if it exits (defeats Ctrl+W, accidental close, crash).
+# Exit cleanly with SIGTERM/SIGINT (e.g. when admin kills the wrapper).
+trap 'kill %1 2>/dev/null; exit 0' INT TERM
+while true; do
+  /usr/bin/chromium \
+    --kiosk \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-extensions \
+    --disable-plugins \
+    --disable-sync \
+    --disable-default-apps \
+    --disable-translate \
+    --disable-background-networking \
+    --disable-component-extensions-with-background-pages \
+    --disable-device-discovery-notifications \
+    --disable-hang-monitor \
+    --disable-popup-blocking \
+    --disable-prompt-on-repost \
+    --disable-component-update \
+    --disable-features=TranslateUI \
+    --check-for-update-interval=31536000 \
+    --overscroll-history-navigation=0 \
+    --noerrdialogs \
+    --incognito \
+    "file:///usr/local/share/kiosk/index.html" &
+  wait %1
+  sleep 0.5
+done
 EOF
 chmod 0755 "$LAUNCH_SCRIPT"
 
