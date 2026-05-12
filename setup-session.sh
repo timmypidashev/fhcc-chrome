@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup: disables SDDM, configures getty@tty1 to autologin the
-# student user, and wires student's startup files to launch the kiosk.
-# Run as root from the admin account. Idempotent — safe to re-run.
+# student user, forces student's shell to bash, and wires startup files
+# to launch the kiosk. Idempotent — safe to re-run.
 set -euo pipefail
 
 KIOSK_USER="${KIOSK_USER:-student}"
@@ -34,12 +34,16 @@ systemctl disable --now sddm 2>/dev/null || true
 rm -f /etc/sddm.conf.d/00-school-kiosk.conf
 rm -f /usr/share/xsessions/school-kiosk.desktop
 
+echo ">> Forcing $KIOSK_USER shell to /bin/bash (sidesteps fish auto-startx)"
+chsh -s /bin/bash "$KIOSK_USER"
+
 echo ">> Autologin on tty1 → $KIOSK_USER"
 mkdir -p "$(dirname "$GETTY_OVERRIDE")"
 cat >"$GETTY_OVERRIDE" <<EOF
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $KIOSK_USER --noclear %I \$TERM
+ExecStart=-/usr/bin/agetty -o '-p -f -- \\\\u' --noclear --autologin $KIOSK_USER --noissue %I \$TERM
+Type=idle
 EOF
 
 echo ">> Writing $KIOSK_HOME/.bash_profile (auto-startx on tty1)"
@@ -56,11 +60,23 @@ exec /usr/local/bin/school-kiosk
 EOF
 chown "$KIOSK_USER:$KIOSK_USER" "$KIOSK_HOME/.xinitrc"
 
+echo ">> Reloading systemd + restarting getty@tty1"
 systemctl daemon-reload
+systemctl restart "getty@tty1"
 
 echo
-echo "Done."
-echo "  - Reboot to enter the kiosk as $KIOSK_USER."
-echo "  - Admin shell: Ctrl+Alt+F2 on external keyboard, or"
-echo "    Ctrl+Alt+Search+2 on the chromebook keyboard."
-echo "  - Disable kiosk: sudo rm $GETTY_OVERRIDE && sudo systemctl daemon-reload"
+echo "=== Sanity check ==="
+echo "Shell for $KIOSK_USER: $(getent passwd "$KIOSK_USER" | cut -d: -f7)"
+echo "Override file:"
+cat "$GETTY_OVERRIDE"
+echo
+echo ".bash_profile owner:"
+ls -l "$KIOSK_HOME/.bash_profile"
+echo ".xinitrc owner:"
+ls -l "$KIOSK_HOME/.xinitrc"
+echo
+echo "Reboot to test. Boot flow should be:"
+echo "  getty@tty1 → autologin $KIOSK_USER → bash → .bash_profile → startx → .xinitrc → school-kiosk"
+echo
+echo "Admin: Ctrl+Alt+F2 (external kbd) or Ctrl+Alt+Search+2 (chromebook kbd)."
+echo "Undo: sudo rm $GETTY_OVERRIDE && sudo systemctl daemon-reload"
