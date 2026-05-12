@@ -50,7 +50,8 @@ while true; do
     --disable-popup-blocking \
     --disable-prompt-on-repost \
     --disable-component-update \
-    --disable-features=TranslateUI \
+    --disable-features=TranslateUI,VaapiVideoDecoder,VaapiVideoEncoder \
+    --disable-accelerated-video-decode \
     --check-for-update-interval=31536000 \
     --overscroll-history-navigation=0 \
     --noerrdialogs \
