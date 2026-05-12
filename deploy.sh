@@ -33,9 +33,18 @@ cat >"$LAUNCH_SCRIPT" <<'EOF'
 # Respawn chromium if it exits (defeats Ctrl+W, accidental close, crash).
 # Exit cleanly with SIGTERM/SIGINT (e.g. when admin kills the wrapper).
 trap 'kill %1 2>/dev/null; exit 0' INT TERM
+
+# Detect screen size — no WM is running to honor --kiosk fullscreen, so
+# we size the window manually. Default if xrandr fails.
+RES=$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')
+W=${RES%x*}; H=${RES#*x}
+W=${W:-1920}; H=${H:-1080}
+
 while true; do
   /usr/bin/chromium \
     --kiosk \
+    --window-position=0,0 \
+    --window-size="$W,$H" \
     --no-first-run \
     --no-default-browser-check \
     --disable-extensions \
