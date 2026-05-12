@@ -30,6 +30,10 @@ ALLOWLIST = [
     "*.kiddle.com",
     "typing.com",
     "*.typing.com",
+    "wolframalpha.com",
+    "*.wolframalpha.com",
+    "britannica.com",
+    "*.britannica.com",
     "docs.google.com",
     "drive.google.com",
     "sheets.google.com",
@@ -115,11 +119,8 @@ def main() -> int:
     for url in HOSTS_URLS:
         text = fetch_hosts(url)
         merged.update(parse_hosts(text))
-    # Prepend "*" to make this a default-deny policy. URLAllowlist
-    # exceptions still take precedence, so only explicitly-allowed
-    # sites load.
-    blocked = ["*"] + sorted(merged)
-    print(f"Merged {len(blocked)-1} unique domains across {len(HOSTS_URLS)} lists (+ wildcard *)")
+    blocked = sorted(merged)
+    print(f"Merged {len(blocked)} unique domains across {len(HOSTS_URLS)} lists")
     policy = build_policy(blocked)
     with open(OUTPUT_FILE, "w") as f:
         json.dump(policy, f, indent=2)

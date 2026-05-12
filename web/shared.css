@@ -71,12 +71,14 @@ nav.pages a:hover, nav.pages a.active {
 }
 .tile h2 { margin: 0; font-size: 1.25rem; }
 
-.t-search   .icon { background: #fde68a; color: #78350f; }
-.t-typing   .icon { background: #bfdbfe; color: #1e3a8a; }
-.t-race     .icon { background: #fecaca; color: #7f1d1d; }
-.t-docs     .icon { background: #bbf7d0; color: #14532d; }
-.t-drive    .icon { background: #ddd6fe; color: #4c1d95; }
-.t-slides   .icon { background: #fbcfe8; color: #831843; }
+.t-search     .icon { background: #fde68a; color: #78350f; }
+.t-typing     .icon { background: #bfdbfe; color: #1e3a8a; }
+.t-race       .icon { background: #fecaca; color: #7f1d1d; }
+.t-docs       .icon { background: #bbf7d0; color: #14532d; }
+.t-drive      .icon { background: #ddd6fe; color: #4c1d95; }
+.t-slides     .icon { background: #fbcfe8; color: #831843; }
+.t-wolfram    .icon { background: #fed7aa; color: #9a3412; }
+.t-britannica .icon { background: #fef3c7; color: #713f12; }
 
 footer {
   position: absolute;
