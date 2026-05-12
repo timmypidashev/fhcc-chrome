@@ -26,7 +26,7 @@ if [[ ! -x /usr/local/bin/school-kiosk ]]; then
 fi
 
 echo ">> Installing required packages"
-pacman -S --needed --noconfirm chromium matchbox-window-manager
+pacman -S --needed --noconfirm chromium openbox
 
 echo ">> X session → $SESSION_FILE"
 cat >"$SESSION_FILE" <<EOF

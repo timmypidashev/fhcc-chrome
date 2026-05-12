@@ -34,7 +34,7 @@ cat >"$LAUNCH_SCRIPT" <<'EOF'
 # Start matchbox-window-manager first so chromium --kiosk goes fullscreen.
 trap 'kill 0' INT TERM EXIT
 
-/usr/bin/matchbox-window-manager -use_titlebar no &
+/usr/bin/openbox &
 
 while true; do
   /usr/bin/chromium \
