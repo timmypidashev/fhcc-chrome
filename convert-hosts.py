@@ -12,7 +12,13 @@ import os
 import sys
 import urllib.request
 
-HOSTS_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+HOSTS_URLS = [
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling/hosts",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn-social/hosts",
+]
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "school_policy.json")
 
 ALLOWLIST = [
@@ -103,9 +109,12 @@ def build_policy(blocked: list[str]) -> dict:
 
 
 def main() -> int:
-    text = fetch_hosts(HOSTS_URL)
-    blocked = parse_hosts(text)
-    print(f"Parsed {len(blocked)} domains")
+    merged = set()
+    for url in HOSTS_URLS:
+        text = fetch_hosts(url)
+        merged.update(parse_hosts(text))
+    blocked = sorted(merged)
+    print(f"Merged {len(blocked)} unique domains across {len(HOSTS_URLS)} lists")
     policy = build_policy(blocked)
     with open(OUTPUT_FILE, "w") as f:
         json.dump(policy, f, indent=2)
