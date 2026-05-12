@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup: makes the chromebook boot straight into the kiosk.
-# No display manager, no shell login, no startx — a single systemd service
-# owns tty1 and runs X with the kiosk as the only X client.
+# Uses cage (Wayland kiosk compositor) as a systemd service. No display
+# manager, no shell, no X.
 # Run as root from the admin account. Idempotent.
 set -euo pipefail
 
@@ -21,42 +21,35 @@ if [[ ! -x /usr/local/bin/school-kiosk ]]; then
   exit 3
 fi
 
-KIOSK_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
-
 echo ">> Installing packages"
-pacman -S --needed --noconfirm chromium openbox xorg-server xorg-xinit
+pacman -S --needed --noconfirm chromium cage seatd xorg-xwayland
 
-echo ">> Disabling SDDM and graphical.target"
+echo ">> Cleaning up any prior attempts"
 systemctl disable --now sddm 2>/dev/null || true
-systemctl set-default multi-user.target
-
-echo ">> Cleaning up any old getty autologin override"
+systemctl disable --now getty@tty1.service 2>/dev/null || true
 rm -rf /etc/systemd/system/getty@tty1.service.d
 rm -f /etc/sddm.conf.d/00-school-kiosk.conf
 rm -f /usr/share/xsessions/school-kiosk.desktop
+rm -f /etc/X11/Xwrapper.config
 
-echo ">> Disabling getty@tty1 (kiosk owns tty1)"
-systemctl disable --now getty@tty1.service 2>/dev/null || true
+echo ">> Default target → multi-user.target (no graphical login)"
+systemctl set-default multi-user.target
 
-echo ">> Allowing non-root X start"
-mkdir -p /etc/X11
-cat >/etc/X11/Xwrapper.config <<'EOF'
-allowed_users=anybody
-needs_root_rights=yes
-EOF
+echo ">> Enabling seatd (cage needs seat management)"
+systemctl enable --now seatd
+gpasswd -a "$KIOSK_USER" seat
 
 echo ">> Writing $KIOSK_SERVICE"
 cat >"$KIOSK_SERVICE" <<EOF
 [Unit]
-Description=FHCC kiosk
-After=systemd-user-sessions.service plymouth-quit-wait.service
+Description=FHCC Kiosk
+After=systemd-user-sessions.service plymouth-quit-wait.service seatd.service
+Wants=seatd.service
 Conflicts=getty@tty1.service
-After=getty@tty1.service
 
 [Service]
 User=$KIOSK_USER
 PAMName=login
-WorkingDirectory=$KIOSK_HOME
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
@@ -66,7 +59,8 @@ StandardOutput=journal
 StandardError=journal
 UtmpIdentifier=tty1
 UtmpMode=user
-ExecStart=/usr/bin/startx /usr/local/bin/school-kiosk -- vt1 -keeptty -novtswitch -nolisten tcp
+Environment=XDG_SESSION_TYPE=wayland
+ExecStart=/usr/bin/cage -- /usr/local/bin/school-kiosk
 Restart=always
 RestartSec=3
 
@@ -80,11 +74,14 @@ systemctl enable kiosk.service
 
 echo
 echo "=== Sanity check ==="
-echo "default target: $(systemctl get-default)"
-echo "kiosk.service: $(systemctl is-enabled kiosk.service)"
-echo "sddm: $(systemctl is-enabled sddm 2>/dev/null || echo disabled)"
-echo "getty@tty1: $(systemctl is-enabled getty@tty1 2>/dev/null || echo disabled)"
+echo "default target : $(systemctl get-default)"
+echo "kiosk.service  : $(systemctl is-enabled kiosk.service)"
+echo "seatd          : $(systemctl is-enabled seatd)"
+echo "sddm           : $(systemctl is-enabled sddm 2>/dev/null || echo disabled)"
+echo "getty@tty1     : $(systemctl is-enabled getty@tty1 2>/dev/null || echo disabled)"
+echo "$KIOSK_USER in seat group : $(id -nG "$KIOSK_USER" | grep -o seat || echo NO)"
 echo
-echo "Reboot to enter the kiosk:  sudo reboot"
-echo "Admin: switch to tty2 with Ctrl+Alt+F2 (external kbd) or Search+Ctrl+Alt+2."
-echo "Disable kiosk: sudo systemctl disable --now kiosk.service && sudo systemctl set-default graphical.target"
+echo "Reboot to enter the kiosk: sudo reboot"
+echo "Admin shell:               Ctrl+Alt+F2 (external kbd) or Search+Ctrl+Alt+2"
+echo "Debug failed boot:         sudo journalctl -u kiosk.service -b --no-pager"
+echo "Disable kiosk:             sudo systemctl disable --now kiosk.service && sudo systemctl set-default graphical.target && sudo systemctl enable sddm && sudo reboot"

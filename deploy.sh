@@ -31,13 +31,13 @@ echo ">> Launcher → $LAUNCH_SCRIPT"
 cat >"$LAUNCH_SCRIPT" <<'EOF'
 #!/usr/bin/env bash
 # Respawn chromium if it exits (defeats Ctrl+W, accidental close, crash).
-# Start matchbox-window-manager first so chromium --kiosk goes fullscreen.
+# Runs under cage (Wayland kiosk compositor) — no separate WM needed.
 trap 'kill 0' INT TERM EXIT
-
-/usr/bin/openbox &
 
 while true; do
   /usr/bin/chromium \
+    --ozone-platform=wayland \
+    --enable-features=UseOzonePlatform \
     --kiosk \
     --no-first-run \
     --no-default-browser-check \
