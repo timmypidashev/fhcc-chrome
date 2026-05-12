@@ -80,6 +80,7 @@ def build_policy(blocked: list[str]) -> dict:
     return {
         "HomepageLocation": "file:///usr/local/share/kiosk/index.html",
         "HomepageIsNewTabPage": False,
+        "NewTabPageLocation": "file:///usr/local/share/kiosk/index.html",
         "RestoreOnStartup": 4,
         "RestoreOnStartupURLs": ["file:///usr/local/share/kiosk/index.html"],
         "URLAllowlist": ALLOWLIST,
@@ -113,8 +114,11 @@ def main() -> int:
     for url in HOSTS_URLS:
         text = fetch_hosts(url)
         merged.update(parse_hosts(text))
-    blocked = sorted(merged)
-    print(f"Merged {len(blocked)} unique domains across {len(HOSTS_URLS)} lists")
+    # Prepend "*" to make this a default-deny policy. URLAllowlist
+    # exceptions still take precedence, so only explicitly-allowed
+    # sites load.
+    blocked = ["*"] + sorted(merged)
+    print(f"Merged {len(blocked)-1} unique domains across {len(HOSTS_URLS)} lists (+ wildcard *)")
     policy = build_policy(blocked)
     with open(OUTPUT_FILE, "w") as f:
         json.dump(policy, f, indent=2)
