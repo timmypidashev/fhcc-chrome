@@ -13,6 +13,14 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
+cat <<'BANNER'
+================================================================
+This script reconfigures the boot path. After it completes,
+REBOOT to enter the kiosk. Your current dwm/SDDM session stays
+alive while this runs.
+================================================================
+BANNER
+
 if [[ ! -x /usr/local/bin/school-kiosk ]]; then
   echo "Launcher missing. Run sudo ./deploy.sh first."
   exit 2
@@ -57,10 +65,10 @@ passwd -d "$KIOSK_USER" >/dev/null
 echo ">> Adding $KIOSK_USER to required groups (video, audio, input)"
 usermod -aG video,audio,input "$KIOSK_USER"
 
-echo ">> Cleaning up any prior attempts"
-systemctl disable --now sddm 2>/dev/null || true
-systemctl disable --now getty@tty1.service 2>/dev/null || true
-systemctl disable --now seatd.service 2>/dev/null || true
+echo ">> Cleaning up any prior attempts (disable for next boot, don't kill live services)"
+systemctl disable sddm 2>/dev/null || true
+systemctl disable getty@tty1.service 2>/dev/null || true
+systemctl disable seatd.service 2>/dev/null || true
 rm -rf /etc/systemd/system/getty@tty1.service.d
 rm -f /etc/sddm.conf.d/00-school-kiosk.conf
 rm -f /usr/share/xsessions/school-kiosk.desktop
