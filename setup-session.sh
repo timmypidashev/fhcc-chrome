@@ -32,19 +32,9 @@ pacman -S --needed --noconfirm \
   ttf-dejavu \
   noto-fonts
 
-echo ">> Checking AUR helper"
-if [[ -z "${SUDO_USER:-}" ]] || [[ "$SUDO_USER" == "root" ]]; then
-  echo "ERROR: AUR install needs a non-root user. Run via 'sudo' from your admin account."
-  exit 4
-fi
-if ! sudo -u "$SUDO_USER" yay --version >/dev/null 2>&1; then
-  echo "ERROR: yay isn't working. Fix it manually (e.g. install yay-bin from AUR), then re-run."
-  exit 5
-fi
-
 echo ">> Installing keyd from AUR"
 if ! command -v keyd >/dev/null; then
-  sudo -u "$SUDO_USER" yay -S --noconfirm keyd
+  sudo -u "${SUDO_USER:-nobody}" yay -S --noconfirm keyd
 fi
 
 echo ">> Ensuring user '$KIOSK_USER' exists with no password"
