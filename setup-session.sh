@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Dead-simple kiosk setup. Creates a passwordless user, installs cage
-# and all its runtime deps, wires a single systemd service that owns
-# tty1 and runs chromium fullscreen. Run as root. Idempotent.
+# and its runtime deps, wires a single systemd service that owns tty1
+# and runs chromium fullscreen. Uses systemd-logind for seat management
+# (no seatd). Run as root. Idempotent.
 set -euo pipefail
 
 KIOSK_USER="${KIOSK_USER:-student}"
@@ -17,11 +18,10 @@ if [[ ! -x /usr/local/bin/school-kiosk ]]; then
   exit 2
 fi
 
-echo ">> Installing packages (cage + runtime deps + fonts)"
+echo ">> Installing packages"
 pacman -S --needed --noconfirm \
   chromium \
   cage \
-  seatd \
   xorg-xwayland \
   mesa \
   libinput \
@@ -38,13 +38,13 @@ if ! id "$KIOSK_USER" >/dev/null 2>&1; then
 fi
 passwd -d "$KIOSK_USER" >/dev/null
 
-echo ">> Adding $KIOSK_USER to required groups (video, audio, input, seat)"
-groupadd -f seat
-usermod -aG video,audio,input,seat "$KIOSK_USER"
+echo ">> Adding $KIOSK_USER to required groups (video, audio, input)"
+usermod -aG video,audio,input "$KIOSK_USER"
 
 echo ">> Cleaning up any prior attempts"
 systemctl disable --now sddm 2>/dev/null || true
 systemctl disable --now getty@tty1.service 2>/dev/null || true
+systemctl disable --now seatd.service 2>/dev/null || true
 rm -rf /etc/systemd/system/getty@tty1.service.d
 rm -f /etc/sddm.conf.d/00-school-kiosk.conf
 rm -f /usr/share/xsessions/school-kiosk.desktop
@@ -53,24 +53,15 @@ rm -f /etc/X11/Xwrapper.config
 echo ">> Default target → multi-user.target"
 systemctl set-default multi-user.target
 
-echo ">> Setting up seatd (unmask, enable, start)"
-systemctl unmask seatd.service
-systemctl daemon-reload
-systemctl enable seatd.service
-systemctl start seatd.service
-
 echo ">> Ensuring dbus is running"
 systemctl is-active dbus.service >/dev/null || systemctl start dbus.service
-
-echo ">> Verifying cage binary"
-test -x /usr/bin/cage || { echo "cage missing after install"; exit 3; }
 
 echo ">> Writing $KIOSK_SERVICE"
 cat >"$KIOSK_SERVICE" <<EOF
 [Unit]
 Description=FHCC Kiosk
-After=systemd-user-sessions.service plymouth-quit-wait.service seatd.service dbus.service
-Wants=seatd.service dbus.service
+After=systemd-user-sessions.service plymouth-quit-wait.service dbus.service
+Wants=dbus.service
 Conflicts=getty@tty1.service
 
 [Service]
@@ -103,8 +94,8 @@ echo
 echo "=== Sanity ==="
 echo "default target  : $(systemctl get-default)"
 echo "kiosk.service   : $(systemctl is-enabled kiosk.service)"
-echo "seatd active    : $(systemctl is-active seatd)"
 echo "dbus active     : $(systemctl is-active dbus)"
+echo "logind active   : $(systemctl is-active systemd-logind)"
 echo "$KIOSK_USER groups : $(id -nG "$KIOSK_USER")"
 echo "$KIOSK_USER pw     : $(passwd -S "$KIOSK_USER" 2>/dev/null | awk '{print $2}') (NP = no password)"
 echo "cage binary     : $(command -v cage)"
@@ -114,9 +105,8 @@ echo
 echo "Reboot to launch the kiosk: sudo reboot"
 echo "Admin shell:                Ctrl+Alt+F2 (external kbd)"
 echo
-echo "If stuck at 'Reached target Multi-User System' after reboot:"
-echo "  Switch to tty2 (Ctrl+Alt+F2), log in as admin, then:"
-echo "    sudo journalctl -u kiosk.service -b --no-pager | head -80"
+echo "If stuck after reboot:"
+echo "  Ctrl+Alt+F2 → admin → sudo journalctl -u kiosk.service -b --no-pager | head -80"
 echo
 echo "Disable kiosk: sudo systemctl disable --now kiosk.service \\"
 echo "               && sudo systemctl set-default graphical.target \\"
