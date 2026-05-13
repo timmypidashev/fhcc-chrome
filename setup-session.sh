@@ -105,13 +105,17 @@ echo ">> Writing swhkd.service"
 cat >/etc/systemd/system/swhkd.service <<'EOF'
 [Unit]
 Description=Simple Wayland HotKey Daemon (blocks kiosk-escape keys)
-After=multi-user.target
-Before=kiosk.service
+# Start AFTER cage so cage gets its keyboard first; swhkd then grabs and
+# cage adopts swhkd's uinput-forwarded device via udev hotplug.
+After=kiosk.service
+Requires=kiosk.service
 
 [Service]
 Type=simple
+ExecStartPre=/bin/sleep 5
 ExecStart=/usr/bin/swhkd -c /etc/swhkd/swhkdrc
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
