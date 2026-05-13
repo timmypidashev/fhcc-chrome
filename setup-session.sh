@@ -97,11 +97,14 @@ cat >/etc/keyd/default.conf <<'EOF'
 *
 
 [main]
-# noop = key consumed, nothing happens
-C-t = noop
-C-n = noop
-C-S-t = noop
 f11 = noop
+
+[control]
+t = noop
+n = noop
+
+[control+shift]
+t = noop
 EOF
 chmod 0644 /etc/keyd/default.conf
 
