@@ -42,11 +42,12 @@ fi
 # gap between system upgrades). yay-bin tracks library bumps; yay-source does not.
 if ! sudo -u "$SUDO_USER" yay --version >/dev/null 2>&1; then
   echo ">> yay is missing or broken — reinstalling yay-bin"
-  pacman -R --noconfirm yay 2>/dev/null || true
+  # Remove every yay variant + its debug pkg so the new install has no conflicts
+  pacman -Rdd --noconfirm yay yay-debug yay-bin yay-bin-debug 2>/dev/null || true
   rm -rf /tmp/yay-bin
   sudo -u "$SUDO_USER" git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
   pushd /tmp/yay-bin >/dev/null
-  sudo -u "$SUDO_USER" makepkg -si --noconfirm
+  sudo -u "$SUDO_USER" makepkg -si --noconfirm --overwrite '*'
   popd >/dev/null
   rm -rf /tmp/yay-bin
 fi
