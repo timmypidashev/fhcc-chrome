@@ -47,7 +47,10 @@ if ! sudo -u "$SUDO_USER" yay --version >/dev/null 2>&1; then
   rm -rf /tmp/yay-bin
   sudo -u "$SUDO_USER" git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
   pushd /tmp/yay-bin >/dev/null
-  sudo -u "$SUDO_USER" makepkg -si --noconfirm --overwrite '*'
+  # build the package as the non-root user
+  sudo -u "$SUDO_USER" makepkg -s --noconfirm
+  # install with --overwrite via pacman directly (makepkg has no --overwrite flag)
+  pacman -U --noconfirm --overwrite '*' ./yay-bin-*.pkg.tar.*
   popd >/dev/null
   rm -rf /tmp/yay-bin
 fi
