@@ -37,29 +37,10 @@ if [[ -z "${SUDO_USER:-}" ]] || [[ "$SUDO_USER" == "root" ]]; then
   echo "ERROR: AUR install needs a non-root user. Run via 'sudo' from your admin account."
   exit 4
 fi
-
-# Rebuild yay if it's missing or broken (typical libalpm.so.N error after a long
-# gap between system upgrades). yay-bin tracks library bumps; yay-source does not.
 if ! sudo -u "$SUDO_USER" yay --version >/dev/null 2>&1; then
-  echo ">> yay is missing or broken — reinstalling yay-bin"
-  # Remove every yay variant + its debug pkg so the new install has no conflicts
-  pacman -Rdd --noconfirm yay yay-debug yay-bin yay-bin-debug 2>/dev/null || true
-  rm -rf /tmp/yay-bin
-  sudo -u "$SUDO_USER" git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
-  pushd /tmp/yay-bin >/dev/null
-  # build the package as the non-root user
-  sudo -u "$SUDO_USER" makepkg -s --noconfirm
-  # install with --overwrite via pacman directly (makepkg has no --overwrite flag)
-  pacman -U --noconfirm --overwrite '*' ./yay-bin-*.pkg.tar.*
-  popd >/dev/null
-  rm -rf /tmp/yay-bin
+  echo "ERROR: yay isn't working. Fix it manually (e.g. install yay-bin from AUR), then re-run."
+  exit 5
 fi
-
-echo ">> Removing swhkd if previously installed (replaced by keyd)"
-systemctl disable --now swhkd.service 2>/dev/null || true
-rm -f /etc/systemd/system/swhkd.service
-rm -rf /etc/swhkd
-sudo -u "$SUDO_USER" yay -R --noconfirm swhkd-git 2>/dev/null || true
 
 echo ">> Installing keyd from AUR"
 if ! command -v keyd >/dev/null; then
