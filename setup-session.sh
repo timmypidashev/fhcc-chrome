@@ -54,6 +54,7 @@ echo ">> Default target → multi-user.target"
 systemctl set-default multi-user.target
 
 echo ">> Enabling required services (dbus, seatd)"
+systemctl unmask dbus.service seatd.service 2>/dev/null || true
 systemctl enable --now dbus.service
 systemctl enable --now seatd.service
 
