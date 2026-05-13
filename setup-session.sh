@@ -117,7 +117,8 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-echo ">> Enabling swhkd.service"
+echo ">> Reloading systemd and enabling swhkd.service"
+systemctl daemon-reload
 systemctl enable swhkd.service
 
 echo ">> Writing $KIOSK_SERVICE"
