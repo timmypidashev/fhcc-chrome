@@ -53,11 +53,14 @@ rm -f /etc/X11/Xwrapper.config
 echo ">> Default target → multi-user.target"
 systemctl set-default multi-user.target
 
-echo ">> Enabling required services (dbus, seatd)"
-systemctl unmask seatd.service 2>/dev/null || true
-systemctl enable --now seatd.service
-# dbus is socket-activated and linked; just make sure it's running
-systemctl start dbus.service 2>/dev/null || true
+echo ">> Setting up seatd (unmask, enable, start)"
+systemctl unmask seatd.service
+systemctl daemon-reload
+systemctl enable seatd.service
+systemctl start seatd.service
+
+echo ">> Ensuring dbus is running"
+systemctl is-active dbus.service >/dev/null || systemctl start dbus.service
 
 echo ">> Verifying cage binary"
 test -x /usr/bin/cage || { echo "cage missing after install"; exit 3; }
