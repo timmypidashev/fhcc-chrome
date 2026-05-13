@@ -32,6 +32,15 @@ pacman -S --needed --noconfirm \
   ttf-dejavu \
   noto-fonts
 
+echo ">> Installing swhkd from AUR"
+if ! command -v swhkd >/dev/null; then
+  if [[ -z "${SUDO_USER:-}" ]] || [[ "$SUDO_USER" == "root" ]]; then
+    echo "ERROR: swhkd needs AUR install. Run this script via 'sudo' from your admin user, not as root."
+    exit 4
+  fi
+  sudo -u "$SUDO_USER" yay -S --noconfirm swhkd-git
+fi
+
 echo ">> Ensuring user '$KIOSK_USER' exists with no password"
 if ! id "$KIOSK_USER" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$KIOSK_USER"
@@ -55,6 +64,42 @@ systemctl set-default multi-user.target
 
 echo ">> Ensuring dbus is running"
 systemctl is-active dbus.service >/dev/null || systemctl start dbus.service
+
+echo ">> Writing swhkd config (blocks Ctrl+T, Ctrl+N, Ctrl+Shift+T, F11)"
+mkdir -p /etc/swhkd
+cat >/etc/swhkd/swhkdrc <<'EOF'
+ctrl + t
+  true
+
+ctrl + n
+  true
+
+ctrl + shift + t
+  true
+
+f11
+  true
+EOF
+chmod 0644 /etc/swhkd/swhkdrc
+
+echo ">> Writing swhkd.service"
+cat >/etc/systemd/system/swhkd.service <<'EOF'
+[Unit]
+Description=Simple Wayland HotKey Daemon (blocks kiosk-escape keys)
+After=multi-user.target
+Before=kiosk.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/swhkd -c /etc/swhkd/swhkdrc
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo ">> Enabling swhkd.service"
+systemctl enable swhkd.service
 
 echo ">> Writing $KIOSK_SERVICE"
 cat >"$KIOSK_SERVICE" <<EOF
@@ -100,6 +145,8 @@ echo "$KIOSK_USER groups : $(id -nG "$KIOSK_USER")"
 echo "$KIOSK_USER pw     : $(passwd -S "$KIOSK_USER" 2>/dev/null | awk '{print $2}') (NP = no password)"
 echo "cage binary     : $(command -v cage)"
 echo "chromium binary : $(command -v chromium)"
+echo "swhkd binary    : $(command -v swhkd)"
+echo "swhkd.service   : $(systemctl is-enabled swhkd.service)"
 echo "launcher        : $(test -x /usr/local/bin/school-kiosk && echo OK || echo MISSING)"
 echo
 echo "Reboot to launch the kiosk: sudo reboot"
