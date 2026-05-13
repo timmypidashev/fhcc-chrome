@@ -55,9 +55,15 @@ if ! sudo -u "$SUDO_USER" yay --version >/dev/null 2>&1; then
   rm -rf /tmp/yay-bin
 fi
 
-echo ">> Installing swhkd from AUR"
-if ! command -v swhkd >/dev/null; then
-  sudo -u "$SUDO_USER" yay -S --noconfirm swhkd-git
+echo ">> Removing swhkd if previously installed (replaced by keyd)"
+systemctl disable --now swhkd.service 2>/dev/null || true
+rm -f /etc/systemd/system/swhkd.service
+rm -rf /etc/swhkd
+sudo -u "$SUDO_USER" yay -R --noconfirm swhkd-git 2>/dev/null || true
+
+echo ">> Installing keyd from AUR"
+if ! command -v keyd >/dev/null; then
+  sudo -u "$SUDO_USER" yay -S --noconfirm keyd
 fi
 
 echo ">> Ensuring user '$KIOSK_USER' exists with no password"
@@ -84,46 +90,24 @@ systemctl set-default multi-user.target
 echo ">> Ensuring dbus is running"
 systemctl is-active dbus.service >/dev/null || systemctl start dbus.service
 
-echo ">> Writing swhkd config (blocks Ctrl+T, Ctrl+N, Ctrl+Shift+T, F11)"
-mkdir -p /etc/swhkd
-cat >/etc/swhkd/swhkdrc <<'EOF'
-ctrl + t
-  true
+echo ">> Writing keyd config (blocks Ctrl+T, Ctrl+N, Ctrl+Shift+T, F11)"
+mkdir -p /etc/keyd
+cat >/etc/keyd/default.conf <<'EOF'
+[ids]
+*
 
-ctrl + n
-  true
-
-ctrl + shift + t
-  true
-
-f11
-  true
+[main]
+# noop = key consumed, nothing happens
+C-t = noop
+C-n = noop
+C-S-t = noop
+f11 = noop
 EOF
-chmod 0644 /etc/swhkd/swhkdrc
+chmod 0644 /etc/keyd/default.conf
 
-echo ">> Writing swhkd.service"
-cat >/etc/systemd/system/swhkd.service <<'EOF'
-[Unit]
-Description=Simple Wayland HotKey Daemon (blocks kiosk-escape keys)
-# Start AFTER cage so cage gets its keyboard first; swhkd then grabs and
-# cage adopts swhkd's uinput-forwarded device via udev hotplug.
-After=kiosk.service
-Requires=kiosk.service
-
-[Service]
-Type=simple
-ExecStartPre=/bin/sleep 5
-ExecStart=/usr/bin/swhkd -c /etc/swhkd/swhkdrc
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo ">> Reloading systemd and enabling swhkd.service"
+echo ">> Reloading systemd and enabling keyd.service"
 systemctl daemon-reload
-systemctl enable swhkd.service
+systemctl enable keyd.service
 
 echo ">> Writing $KIOSK_SERVICE"
 cat >"$KIOSK_SERVICE" <<EOF
@@ -169,8 +153,8 @@ echo "$KIOSK_USER groups : $(id -nG "$KIOSK_USER")"
 echo "$KIOSK_USER pw     : $(passwd -S "$KIOSK_USER" 2>/dev/null | awk '{print $2}') (NP = no password)"
 echo "cage binary     : $(command -v cage)"
 echo "chromium binary : $(command -v chromium)"
-echo "swhkd binary    : $(command -v swhkd)"
-echo "swhkd.service   : $(systemctl is-enabled swhkd.service)"
+echo "keyd binary     : $(command -v keyd)"
+echo "keyd.service    : $(systemctl is-enabled keyd.service)"
 echo "launcher        : $(test -x /usr/local/bin/school-kiosk && echo OK || echo MISSING)"
 echo
 echo "Reboot to launch the kiosk: sudo reboot"
