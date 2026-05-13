@@ -32,9 +32,20 @@ pacman -S --needed --noconfirm \
   ttf-dejavu \
   noto-fonts
 
-echo ">> Installing keyd from AUR"
+echo ">> Installing keyd from AUR via makepkg (no AUR helper needed)"
 if ! command -v keyd >/dev/null; then
-  sudo -u "${SUDO_USER:-nobody}" yay -S --noconfirm keyd
+  if [[ -z "${SUDO_USER:-}" ]] || [[ "$SUDO_USER" == "root" ]]; then
+    echo "ERROR: makepkg refuses to run as root. Run script via sudo from admin user."
+    exit 4
+  fi
+  pacman -S --needed --noconfirm base-devel git
+  rm -rf /tmp/keyd
+  sudo -u "$SUDO_USER" git clone https://aur.archlinux.org/keyd.git /tmp/keyd
+  pushd /tmp/keyd >/dev/null
+  sudo -u "$SUDO_USER" makepkg -s --noconfirm
+  pacman -U --noconfirm ./keyd-*.pkg.tar.*
+  popd >/dev/null
+  rm -rf /tmp/keyd
 fi
 
 echo ">> Ensuring user '$KIOSK_USER' exists with no password"
